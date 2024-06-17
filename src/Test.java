@@ -1,3 +1,6 @@
+import java.math.BigInteger;
+import java.security.SecureRandom;
+
 /**
  * This class is simply used for testing, might not be included in the final result
  * @author Alex Garcia
@@ -6,14 +9,16 @@
 public class Test {
     public static void main(String[] args){
 
-        //CSHAKE256()
-        sample3();
-        cShakeSample4();
-
-        //KMACXOF256()
-        sample4();
-        sample5();
-        sample6();
+//        //CSHAKE256()
+//        sample3();
+//        cShakeSample4();
+//
+//        //KMACXOF256()
+//        sample4();
+//        sample5();
+//        sample6();
+        //testElicpticCurve();
+        randomTestElipticCurve();
     }
 
     /**
@@ -92,5 +97,103 @@ public class Test {
         byte[] res = Sha3.cShake256(data, 512, "".getBytes(), "Email Signature".getBytes());
         System.out.println("---cShake Sample#4 Output----");
         System.out.println(Main.byteToHex(res));
+    }
+
+    public static void testElicpticCurve(){
+
+        //testiing the neutral points
+        ED448 O = new ED448();
+        ED448 O_3 = new ED448(BigInteger.ONE, false);
+        System.out.println("Testing netral point");
+        System.out.println(O.equals(O_3));
+        System.out.println("Testing netral point");
+
+        ED448 G = ED448.ed448gen(false);
+        System.out.println("Testing netral point");
+
+        ED448 G1 = G.scalMul(BigInteger.ZERO);
+        System.out.println("0 ⋅ G = O: " + G1.equals(O));
+
+        ED448 G2 = G.scalMul(BigInteger.ONE);
+        System.out.println("1 ⋅ G = G: " + G2.equals(G));
+
+        ED448 gNeg = G.inverse();
+        ED448 G3 = G.add(gNeg);
+        System.out.println("G + (-G) = O: " + G3.equals(O));
+
+        ED448 G4 = G.scalMul(BigInteger.TWO);
+        System.out.println("2G = G + G: " + G4.equals(G.add(G)));
+
+        ED448 G5 = G.scalMul(BigInteger.valueOf(4));
+        ED448 G6 = G.scalMul(BigInteger.TWO).scalMul(BigInteger.TWO);
+        System.out.println("4G = 2*(2*G): " + G5.equals(G6));
+
+        System.out.println("4G = O: " + G5.equals(O));
+
+        ED448 RG = G.scalMul(ED448.r);
+
+        System.out.println("rG = O: " + RG.equals(O));
+
+    }
+
+    public static void randomTestElipticCurve(){
+        SecureRandom random = new SecureRandom();
+        BigInteger[] bigIntegers = new BigInteger[3];
+        ED448 G = ED448.ed448gen(false);
+
+        //for loop to repeat tests
+        for(int i = 0; i<1000; i++) {
+            System.out.println("test"+i);
+            // Generate 3 random BigIntegers with a maximum bit length of 448
+            for (int j = 0; j < 3; j++) {
+                bigIntegers[j] = new BigInteger(448, random);
+            }
+            BigInteger k = bigIntegers[0];
+            BigInteger l = bigIntegers[1];
+            BigInteger m = bigIntegers[2];
+
+            //test 1
+            ED448 left1 = G.scalMul(k);
+            ED448 right1 = G.scalMul(k.mod(ED448.r));
+
+            boolean test1 = left1.equals(right1);
+            if(!test1){
+                throw new AssertionError("failed test1");
+            }
+            //test2
+            ED448 left2 = G.scalMul(k.add(BigInteger.ONE));
+            ED448 right2 = G.add(G.scalMul(k));
+            boolean test2 = left2.equals(right2);
+            if(!test2){
+                throw new AssertionError("failed test2");
+            }
+
+            //test3
+            ED448 left3 = G.scalMul(k.add(l));
+            ED448 right3 = G.scalMul(k).add(G.scalMul(l));
+            boolean test3 = left3.equals(right3);
+            if(!test3){
+                throw new AssertionError("failed test3");
+            }
+
+            //test4
+            ED448 left4 = G.scalMul(l).scalMul(k);
+            ED448 middle4 = G.scalMul(k).scalMul(l);
+            ED448 right4 = G.scalMul(k.multiply(l).mod(ED448.r));
+            boolean test4 = left4.equals(middle4) && middle4.equals(right4);
+            if(!test4){
+                throw new AssertionError("failed test4");
+            }
+
+            //test5
+            ED448 left5 = G.scalMul(k).add(G.scalMul(l).add(G.scalMul(m)));
+            ED448 right5 = G.scalMul(m).add(G.scalMul(k).add(G.scalMul(l)));
+            boolean test5 = left5.equals(right5);
+            if(!test5){
+                System.out.println("failed ");
+                throw new AssertionError("failed test5");
+            }
+
+        }
     }
 }
